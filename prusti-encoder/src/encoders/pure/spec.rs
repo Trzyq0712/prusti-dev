@@ -200,10 +200,6 @@ impl TaskEncoder for MirSpecEnc {
                 .expect_native()
                 .snap_to_prim;
 
-            let substs = find_trait_method_substs(vcx.tcx(), def_id, substs)
-                .map(|s| s.1)
-                .unwrap_or(substs);
-
             let pre_to_expr = |spec_did, deps: &mut TaskEncoderDependencies<'vir, MirSpecEnc>| {
                 let expr = deps
                     .require_dep::<crate::encoders::MirPureEnc>(crate::encoders::MirPureEncTask {
@@ -437,7 +433,7 @@ fn refine_spec_cond<'vir>(
                         let decomp = RustTyDecomposition::from_ty(ty, did);
                         let gparams = deps.require_dep::<GenericParamsEnc>(did.into()).unwrap();
                         let ty_expr = gparams.ty_expr(deps, decomp);
-                        checks.push(vcx.mk_eq_expr(projection, ty_expr));
+                        checks.push(vcx.mk_eq_expr(projection, ty_expr.ok().unwrap()));
                     }
                     ty::TermKind::Const(_) => {
                         todo!("Implement const projections in `refine_spec` bounds")

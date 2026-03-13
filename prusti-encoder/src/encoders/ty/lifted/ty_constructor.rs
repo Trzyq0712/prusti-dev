@@ -133,7 +133,7 @@ impl TaskEncoder for TyConstructorEnc {
                 vcx.mk_adt_constructor(type_function_ident.name().to_str(), vcx.alloc_slice(&args));
 
             // NOTE: This call depends on the ref output of this encoder
-            deps.require_dep::<SizedTraitEnc>(task_key)?;
+            // deps.require_dep::<SizedTraitEnc>(task_key)?;
 
             Ok((variant, ()))
         })
