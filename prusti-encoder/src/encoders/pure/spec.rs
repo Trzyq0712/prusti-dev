@@ -210,42 +210,43 @@ impl TaskEncoder for MirSpecEnc {
                         substs,
                         // TODO: should this be `def_id` or `caller_def_id`
                         caller_def_id: Some(def_id),
-                    })
-                    .unwrap()
+                    })?
                     .expr
                     .downcast_ty();
                 let span = vcx.tcx().def_span(spec_did);
                 let expr = vcx.with_span(span, |_| expr);
-                to_bool(expr.reify(vcx, (spec_did, pre_args))).downcast_ty()
+                Ok(to_bool(expr.reify(vcx, (spec_did, pre_args))).downcast_ty())
             };
 
             let refined_pres = specs
                 .refined_pres
                 .iter()
                 .map(|spec_did| {
-                    let expr = pre_to_expr(*spec_did, deps);
+                    let expr = pre_to_expr(*spec_did, deps)?;
 
                     // Must be present if there are refined pres or posts
                     let cond = refine_spec_cond.unwrap();
 
-                    vcx.mk_bin_op_expr(vir::BinOpKind::Implies, cond, expr)
-                        .downcast_ty()
+                    Ok(vcx
+                        .mk_bin_op_expr(vir::BinOpKind::Implies, cond, expr)
+                        .downcast_ty())
                 })
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
 
-            let pres = specs
+            let mut pres = specs
                 .pres
                 .iter()
                 .map(|spec_did| {
-                    let expr = pre_to_expr(*spec_did, deps);
+                    let expr = pre_to_expr(*spec_did, deps)?;
 
-                    not_refine_spec_cond.map_or(expr, |not_cond| {
+                    Ok(not_refine_spec_cond.map_or(expr, |not_cond| {
                         vcx.mk_bin_op_expr(vir::BinOpKind::Implies, not_cond, expr)
                             .downcast_ty()
-                    })
+                    }))
                 })
-                .chain(refined_pres)
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
+
+            pres.extend(refined_pres);
 
             let post_args = match enc_mode {
                 MirSpecEncMode::Impure => {
@@ -279,11 +280,10 @@ impl TaskEncoder for MirSpecEnc {
                                 // TODO: should this be `def_id` or `caller_def_id`
                                 caller_def_id: Some(def_id),
                             },
-                        )
-                        .unwrap()
+                        )?
                         .expr
                         .downcast_ty();
-                    to_bool(expr.reify(vcx, (spec_did, post_args))).downcast_ty()
+                    Ok(to_bool(expr.reify(vcx, (spec_did, post_args))).downcast_ty())
                 })
             };
 
@@ -291,28 +291,30 @@ impl TaskEncoder for MirSpecEnc {
                 .refined_posts
                 .iter()
                 .map(|spec_did| {
-                    let expr = post_to_expr(*spec_did, deps);
+                    let expr = post_to_expr(*spec_did, deps)?;
 
                     let cond = refine_spec_cond.unwrap();
 
-                    vcx.mk_bin_op_expr(vir::BinOpKind::Implies, cond, expr)
-                        .downcast_ty()
+                    Ok(vcx
+                        .mk_bin_op_expr(vir::BinOpKind::Implies, cond, expr)
+                        .downcast_ty())
                 })
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
 
-            let posts = specs
+            let mut posts = specs
                 .posts
                 .iter()
                 .map(|spec_did| {
-                    let expr = post_to_expr(*spec_did, deps);
+                    let expr = post_to_expr(*spec_did, deps)?;
 
-                    not_refine_spec_cond.map_or(expr, |not_cond| {
+                    Ok(not_refine_spec_cond.map_or(expr, |not_cond| {
                         vcx.mk_bin_op_expr(vir::BinOpKind::Implies, not_cond, expr)
                             .downcast_ty()
-                    })
+                    }))
                 })
-                .chain(refined_posts)
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
+
+            posts.extend(refined_posts);
 
             let pledges = specs
                 .pledges

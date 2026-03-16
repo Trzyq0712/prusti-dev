@@ -229,20 +229,24 @@ impl TaskEncoder for MirLocalDefEnc {
                         arg_count: body.arg_count,
                     },
                 )?;
-                let locals = IndexVec::from_fn_n(
-                    |local: mir::Local| {
-                        let rust_ty = body.local_decls[local].ty;
-                        let rust_ty_task = RustTyDecomposition::from_ty(rust_ty, task_key.def_id());
-                        let ty = deps.require_dep::<TyUseImpureEnc>(rust_ty_task).unwrap();
-                        mk_local_def(vcx, local, ty)
-                    },
-                    if task_key.all_locals() {
+                let locals = {
+                    let len = if task_key.all_locals() {
                         body.local_decls.len()
                     } else {
                         // return + arguments
                         1 + body.arg_count
-                    },
-                );
+                    };
+                    (0..len)
+                        .map(|i| {
+                            let local = mir::Local::from(i);
+                            let rust_ty = body.local_decls[local].ty;
+                            let rust_ty_task =
+                                RustTyDecomposition::from_ty(rust_ty, task_key.def_id());
+                            let ty = deps.require_dep::<TyUseImpureEnc>(rust_ty_task)?;
+                            Ok(mk_local_def(vcx, local, ty))
+                        })
+                        .collect::<Result<IndexVec<mir::Local, _>, _>>()?
+                };
                 MirLocalDefEncOutput {
                     locals: vcx.alloc(locals),
                     arg_count: body.arg_count,

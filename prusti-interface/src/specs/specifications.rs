@@ -245,11 +245,8 @@ pub fn find_trait_method_substs<'tcx>(
         .def_id;
 
     // sanity check: have we been given the correct number of substs?
-    let identity_impl_method = ty::List::identity_for_item(tcx, dbg!(impl_method_def_id));
-    assert_eq!(
-        dbg!(&identity_impl_method).len(),
-        dbg!(&impl_method_substs).len()
-    );
+    let identity_impl_method = ty::List::identity_for_item(tcx, impl_method_def_id);
+    assert_eq!(identity_impl_method.len(), impl_method_substs.len());
 
     // Given:
     // ```

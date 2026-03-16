@@ -138,7 +138,7 @@ impl TaskEncoder for MirPureEnc {
                 }
             };
 
-            let expr_inner = Enc::new(vcx, task_key.0, def_id, caller_def_id, kind, &body, deps)
+            let expr_inner = Enc::new(vcx, task_key.0, def_id, caller_def_id, kind, &body, deps)?
                 .encode_body()?;
 
             // We wrap the expression with an additional lazy that will perform
@@ -317,7 +317,7 @@ impl<'vir: 'enc, 'enc> Enc<'vir, 'enc> {
         kind: PureKind,
         body: &'enc mir::Body<'vir>,
         deps: &'enc mut TaskEncoderDependencies<'vir, MirPureEnc>,
-    ) -> Self {
+    ) -> Result<Self, EncodeFullError<'vir, MirPureEnc>> {
         assert!(
             !graph::is_cyclic(&body.basic_blocks),
             "MIR pure encoding does not support loops"
@@ -331,10 +331,8 @@ impl<'vir: 'enc, 'enc> Enc<'vir, 'enc> {
                 all_locals: true,
             }
         };
-        let local_defs = deps
-            .require_dep::<MirLocalDefEnc>(local_def_enc_task)
-            .unwrap();
-        Self {
+        let local_defs = deps.require_dep::<MirLocalDefEnc>(local_def_enc_task)?;
+        Ok(Self {
             vcx,
             encoding_depth,
             def_id,
@@ -351,7 +349,7 @@ impl<'vir: 'enc, 'enc> Enc<'vir, 'enc> {
             before_expiry_mode: false,
             local_defs,
             impure_context: matches!(kind, PureKind::Spec(_)),
-        }
+        })
     }
 
     fn ty_use(&mut self, ty: ty::Ty<'vir>) -> TyUsePure<'vir> {
