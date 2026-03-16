@@ -433,9 +433,9 @@ fn refine_spec_cond<'vir>(
                             args.get_const(),
                         );
                         let decomp = RustTyDecomposition::from_ty(ty, did);
-                        let gparams = deps.require_dep::<GenericParamsEnc>(did.into()).unwrap();
-                        let ty_expr = gparams.ty_expr(deps, decomp);
-                        checks.push(vcx.mk_eq_expr(projection, ty_expr.ok().unwrap()));
+                        let gparams = deps.require_dep::<GenericParamsEnc>(did.into()).ok()?;
+                        let ty_expr = gparams.ty_expr(deps, decomp).ok()?;
+                        checks.push(vcx.mk_eq_expr(projection, ty_expr));
                     }
                     ty::TermKind::Const(_) => {
                         todo!("Implement const projections in `refine_spec` bounds")
